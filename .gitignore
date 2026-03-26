@@ -1,0 +1,25 @@
+# Python
+backend/venv/
+backend/__pycache__/
+backend/**/__pycache__/
+*.pyc
+*.pyo
+
+# Node
+renderer/node_modules/
+frontend/node_modules/
+
+# Build outputs
+frontend/dist/
+frontend/build/
+
+# Temp files
+backend/temp/
+*.tmp.html
+
+# Config (contains user-specific settings)
+backend/config.json
+
+# OS
+.DS_Store
+Thumbs.db
