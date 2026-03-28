@@ -6,8 +6,11 @@ FastAPI backend for Aldus.
 import os
 import json
 import glob
+import subprocess
+import sys
 from pathlib import Path
-from fastapi import FastAPI, HTTPException
+import tempfile
+from fastapi import FastAPI, HTTPException, UploadFile, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
@@ -51,6 +54,7 @@ class ConvertRequest(BaseModel):
     author: str | None = None
     banner_lines: list[str] | None = None
     banner_image_path: str | None = None
+    include_footer: bool = True
 
 class ConvertFolderRequest(BaseModel):
     folder_path: str
@@ -58,6 +62,7 @@ class ConvertFolderRequest(BaseModel):
     author: str | None = None
     banner_lines: list[str] | None = None
     banner_image_path: str | None = None
+    include_footer: bool = True
 
 class ConfigModel(BaseModel):
     author: str | None = None
@@ -115,6 +120,7 @@ def convert_file(body: ConvertRequest):
             banner_lines=body.banner_lines or config['banner_lines'] or None,
             banner_image_path=body.banner_image_path or config['banner_image_path'] or None,
             author=body.author or config['author'],
+            include_footer=body.include_footer,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -146,6 +152,7 @@ def convert_folder(body: ConvertFolderRequest):
                 banner_lines=body.banner_lines or config['banner_lines'] or None,
                 banner_image_path=body.banner_image_path or config['banner_image_path'] or None,
                 author=body.author or config['author'],
+                include_footer=body.include_footer,
             )
             results.append({'file': md_file, 'pdf': pdf_path, 'status': 'ok'})
         except Exception as e:
@@ -159,9 +166,107 @@ def convert_folder(body: ConvertFolderRequest):
     }
 
 
+@app.get('/pick-file')
+def pick_file():
+    """Open a native OS file picker and return the selected path."""
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1)
+    path = filedialog.askopenfilename(
+        title='Select a Markdown file',
+        filetypes=[('Markdown files', '*.md'), ('All files', '*.*')]
+    )
+    root.destroy()
+    return {'path': path or ''}
+
+
+@app.get('/pick-folder')
+def pick_folder():
+    """Open a native OS folder picker and return the selected path."""
+    import tkinter as tk
+    from tkinter import filedialog
+    root = tk.Tk()
+    root.withdraw()
+    root.wm_attributes('-topmost', 1)
+    path = filedialog.askdirectory(title='Select a folder')
+    root.destroy()
+    return {'path': path or ''}
+
+
+@app.post('/convert-upload')
+async def convert_upload(
+    file: UploadFile,
+    theme: str = Form('default'),
+    author: str = Form('Alex Tian'),
+    include_footer: bool = Form(True),
+    img_dir: str = Form(''),
+):
+    """Accept a .md file upload, convert to PDF, return the PDF directly."""
+    if not file.filename.endswith('.md'):
+        raise HTTPException(status_code=400, detail='Only .md files are supported')
+
+    config = load_config()
+    content = await file.read()
+
+    with tempfile.NamedTemporaryFile(
+        suffix='.md', delete=False, mode='wb',
+        prefix=os.path.splitext(file.filename)[0] + '_'
+    ) as tmp:
+        tmp.write(content)
+        tmp_path = tmp.name
+
+    try:
+        pdf_path = convert(
+            md_path=tmp_path,
+            theme=theme or config['theme'],
+            author=author or config['author'],
+            include_footer=include_footer,
+            img_dir=img_dir.strip() or None,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+
+    return FileResponse(pdf_path, media_type='application/pdf', filename=file.filename.replace('.md', '.pdf'))
+
+
 @app.get('/preview')
 def preview_pdf(file_path: str):
     """Return a generated PDF file for preview."""
     if not os.path.isfile(file_path):
         raise HTTPException(status_code=404, detail='PDF not found')
     return FileResponse(file_path, media_type='application/pdf')
+
+
+@app.post('/open')
+def open_file(body: dict):
+    """Open a file in the system default application."""
+    path = body.get('path', '')
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail='File not found')
+    if sys.platform == 'win32':
+        os.startfile(path)
+    elif sys.platform == 'darwin':
+        subprocess.Popen(['open', path])
+    else:
+        subprocess.Popen(['xdg-open', path])
+    return {'ok': True}
+
+
+@app.post('/open-folder')
+def open_folder(body: dict):
+    """Reveal a file in the system file explorer."""
+    path = body.get('path', '')
+    if not os.path.isfile(path):
+        raise HTTPException(status_code=404, detail='File not found')
+    if sys.platform == 'win32':
+        subprocess.Popen(['explorer', '/select,', os.path.normpath(path)])
+    elif sys.platform == 'darwin':
+        subprocess.Popen(['open', '-R', path])
+    else:
+        subprocess.Popen(['xdg-open', os.path.dirname(path)])
+    return {'ok': True}

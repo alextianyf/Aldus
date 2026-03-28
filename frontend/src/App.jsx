@@ -8,14 +8,17 @@ import { getConfig, saveConfig, getThemes, convertFile, convertFolder, previewUr
 import './App.css'
 
 export default function App() {
-  const [path, setPath]       = useState('')
-  const [author, setAuthor]   = useState('')
-  const [theme, setTheme]     = useState('default')
-  const [themes, setThemes]   = useState(['default'])
-  const [pdfUrl, setPdfUrl]   = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [status, setStatus]   = useState('')
-  const [results, setResults] = useState([])
+  const [path, setPath]         = useState('')
+  const [author, setAuthor]     = useState('')
+  const [theme, setTheme]       = useState('default')
+  const [themes, setThemes]     = useState(['default'])
+  const [footer, setFooter]     = useState(true)
+  const [pdfUrl, setPdfUrl]     = useState(null)
+  const [pdfPath, setPdfPath]   = useState(null)
+  const [loading, setLoading]   = useState(false)
+  const [loadingMsg, setLoadingMsg] = useState('')
+  const [status, setStatus]     = useState('')
+  const [results, setResults]   = useState([])
 
   useEffect(() => {
     getConfig().then(c => {
@@ -30,33 +33,58 @@ export default function App() {
 
   const isFolder = path.trim() && !path.trim().endsWith('.md')
 
+  function validate() {
+    const p = path.trim()
+    if (!p) return 'Please enter or browse a file or folder path.'
+    if (p.endsWith('.md') === false && p.includes('.')) return 'Invalid input — select a .md file or a folder.'
+    return null
+  }
+
   async function handleConvert() {
-    if (!path.trim()) {
-      setStatus('Please enter a file or folder path.')
-      return
-    }
+    const err = validate()
+    if (err) { setStatus(err); return }
 
     setLoading(true)
     setStatus('')
     setResults([])
     setPdfUrl(null)
+    setPdfPath(null)
 
     try {
       if (isFolder) {
-        const res = await convertFolder({ folder_path: path.trim(), theme, author })
+        setLoadingMsg('Converting folder...')
+        const res = await convertFolder({
+          folder_path: path.trim(), theme, author, include_footer: footer,
+        })
         setResults(res.results)
-        setStatus(`Done — ${res.success} converted, ${res.failed} failed.`)
+        if (res.failed === 0) {
+          setStatus(`Done — ${res.success} file${res.success !== 1 ? 's' : ''} converted.`)
+        } else {
+          setStatus(`Done — ${res.success} converted, ${res.failed} failed. Check the log below.`)
+        }
         const first = res.results.find(r => r.status === 'ok')
-        if (first) setPdfUrl(previewUrl(first.pdf))
+        if (first) { setPdfUrl(previewUrl(first.pdf)); setPdfPath(first.pdf) }
       } else {
-        const res = await convertFile({ file_path: path.trim(), theme, author })
+        setLoadingMsg('Converting...')
+        const res = await convertFile({
+          file_path: path.trim(), theme, author, include_footer: footer,
+        })
         setPdfUrl(previewUrl(res.pdf_path))
+        setPdfPath(res.pdf_path)
         setStatus('Conversion complete.')
       }
     } catch (err) {
-      setStatus(`Error: ${err.response?.data?.detail || err.message}`)
+      const detail = err.response?.data?.detail || err.message
+      if (detail.includes('not found') || detail.includes('No such file')) {
+        setStatus('File or folder not found. Check the path and try again.')
+      } else if (detail.includes('No markdown files')) {
+        setStatus('No .md files found in that folder.')
+      } else {
+        setStatus(`Error: ${detail}`)
+      }
     } finally {
       setLoading(false)
+      setLoadingMsg('')
     }
   }
 
@@ -79,7 +107,13 @@ export default function App() {
 
         <FilePicker value={path} onChange={setPath} />
         <ThemeSelector themes={themes} value={theme} onChange={setTheme} />
-        <Settings author={author} onAuthorChange={setAuthor} onSave={handleSaveConfig} />
+        <Settings
+          author={author}
+          onAuthorChange={setAuthor}
+          footer={footer}
+          onFooterChange={setFooter}
+          onSave={handleSaveConfig}
+        />
 
         <div className="section">
           <button className="btn-convert" onClick={handleConvert} disabled={loading}>
@@ -97,7 +131,12 @@ export default function App() {
       </div>
 
       <div className="preview">
-        <PreviewPanel pdfUrl={pdfUrl} />
+        <PreviewPanel
+          pdfUrl={pdfUrl}
+          pdfPath={pdfPath}
+          loading={loading}
+          loadingMsg={loadingMsg}
+        />
       </div>
     </div>
   )

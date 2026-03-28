@@ -125,6 +125,7 @@ def build_html(
     banner_image_path: str | None = None,
     author: str = 'Alex Tian',
     include_footer: bool = True,
+    img_dir: str | None = None,
 ) -> str:
     """
     Convert a markdown file to a full HTML document string.
@@ -141,7 +142,8 @@ def build_html(
         Full HTML string ready for Puppeteer.
     """
     md_path = os.path.abspath(md_path)
-    img_dir = os.path.join(os.path.dirname(md_path), 'images')
+    if not img_dir:
+        img_dir = os.path.join(os.path.dirname(md_path), 'images')
 
     with open(md_path, 'r', encoding='utf-8') as f:
         text = f.read()
@@ -221,6 +223,8 @@ def convert(
     banner_lines: list[str] | None = None,
     banner_image_path: str | None = None,
     author: str = 'Alex Tian',
+    include_footer: bool = True,
+    img_dir: str | None = None,
     renderer_dir: str | None = None,
 ) -> str:
     """
@@ -240,6 +244,8 @@ def convert(
         banner_lines=banner_lines,
         banner_image_path=banner_image_path,
         author=author,
+        include_footer=include_footer,
+        img_dir=img_dir,
     )
 
     # Write temp HTML next to the markdown file so relative paths resolve
@@ -276,12 +282,14 @@ def convert(
 # ── CLI usage ─────────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     import sys
+    import argparse
 
-    if len(sys.argv) < 2:
-        print('Usage: python converter.py <file.md> [output.pdf]')
-        sys.exit(1)
+    parser = argparse.ArgumentParser(description='Convert markdown to PDF')
+    parser.add_argument('input', help='Path to .md file')
+    parser.add_argument('output', nargs='?', help='Output PDF path (optional)')
+    parser.add_argument('--theme', default='default', help='Theme name (default: default)')
+    parser.add_argument('--author', default='Alex Tian', help='Author name for footer')
+    args = parser.parse_args()
 
-    md  = sys.argv[1]
-    out = sys.argv[2] if len(sys.argv) > 2 else None
-    pdf = convert(md, out)
+    pdf = convert(args.input, args.output, theme=args.theme, author=args.author)
     print(f'PDF saved to: {pdf}')
