@@ -147,6 +147,37 @@ table[align="center"] pre {
   background: none;
 }
 
+/* Table of Contents */
+.toc {
+  border: 1px solid #c5cae9;
+  background: #f8f9ff;
+  padding: 10px 18px;
+  margin: 14px 0 20px 0;
+  border-radius: 4px;
+  display: inline-block;
+  min-width: 220px;
+}
+
+.toc ul, .toc ol {
+  margin: 2px 0 2px 18px;
+  padding: 0;
+}
+
+.toc li {
+  display: list-item;
+  margin-bottom: 2px;
+  list-style: disc;
+}
+
+.toc a {
+  text-decoration: none;
+  color: #1565c0;
+}
+
+.toc a:hover {
+  text-decoration: underline;
+}
+
 /* Footer */
 .aldus-footer {
   text-align: center;

@@ -46,6 +46,14 @@ KATEX_JS  = f'https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/katex.min.
 KATEX_AR  = f'https://cdn.jsdelivr.net/npm/katex@{KATEX_VERSION}/dist/contrib/auto-render.min.js'
 
 
+def _github_slugify(value: str, separator: str) -> str:
+    """Generate heading IDs matching GitHub's algorithm, so manual TOC links work."""
+    value = value.lower().strip()
+    value = re.sub(r'[^a-z0-9 -]', '', value)
+    value = value.replace(' ', separator)
+    return value
+
+
 def _protect_math(text: str) -> tuple[str, list[str]]:
     """
     Replace LaTeX math blocks with safe placeholders so the markdown
@@ -158,7 +166,11 @@ def build_html(
     text, math_store = _protect_math(text)
 
     # 3. Markdown → HTML (toc extension adds id attributes to headings for anchor links)
-    md = markdown.Markdown(extensions=['tables', 'fenced_code', 'extra', 'sane_lists', 'toc'])
+    md = markdown.Markdown(
+        extensions=['tables', 'fenced_code', 'extra', 'sane_lists', 'toc'],
+        extension_configs={'toc': {'slugify': _github_slugify}},
+        tab_length=2,
+    )
     body = md.convert(text)
 
     # 4. Restore math
@@ -224,6 +236,7 @@ def convert(
     banner_image_path: str | None = None,
     author: str = 'Alex Tian',
     include_footer: bool = True,
+    page_numbers: bool = True,
     img_dir: str | None = None,
     renderer_dir: str | None = None,
 ) -> str:
@@ -260,7 +273,7 @@ def convert(
 
         render_script = os.path.join(renderer_dir, 'render.js')
         result = subprocess.run(
-            ['node', render_script, temp_html, output_path],
+            ['node', render_script, temp_html, output_path, str(page_numbers).lower()],
             capture_output=True,
             text=True,
         )

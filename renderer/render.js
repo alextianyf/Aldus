@@ -29,11 +29,18 @@ async function render(htmlPath, outputPath) {
     // No math in document — that's fine, continue
   });
 
+  const showPageNumbers = process.argv[4] !== 'false';
+
   await page.pdf({
     path: absOutput,
     format: 'A4',
     margin: { top: '20mm', right: '20mm', bottom: '25mm', left: '20mm' },
     printBackground: true,
+    displayHeaderFooter: showPageNumbers,
+    headerTemplate: '<span></span>',
+    footerTemplate: showPageNumbers
+      ? '<div style="width:100%;text-align:center;font-size:9px;color:#888;font-family:Segoe UI,Arial,sans-serif;"><span class="pageNumber"></span> / <span class="totalPages"></span></div>'
+      : '<span></span>',
   });
 
   await browser.close();

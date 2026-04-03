@@ -1,4 +1,4 @@
-export default function Settings({ author, onAuthorChange, footer, onFooterChange, onSave }) {
+export default function Settings({ author, onAuthorChange, footer, onFooterChange, pageNumbers, onPageNumbersChange, onSave }) {
   return (
     <div className="section">
       <label className="label">Author Name</label>
@@ -20,6 +20,16 @@ export default function Settings({ author, onAuthorChange, footer, onFooterChang
             onChange={e => onFooterChange(e.target.checked)}
           />
           <span>Show footer</span>
+        </label>
+      </div>
+      <div className="toggle-row">
+        <label className="toggle-label">
+          <input
+            type="checkbox"
+            checked={pageNumbers}
+            onChange={e => onPageNumbersChange(e.target.checked)}
+          />
+          <span>Page numbers</span>
         </label>
       </div>
     </div>

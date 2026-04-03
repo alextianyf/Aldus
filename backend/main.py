@@ -55,6 +55,7 @@ class ConvertRequest(BaseModel):
     banner_lines: list[str] | None = None
     banner_image_path: str | None = None
     include_footer: bool = True
+    page_numbers: bool = True
 
 class ConvertFolderRequest(BaseModel):
     folder_path: str
@@ -63,6 +64,7 @@ class ConvertFolderRequest(BaseModel):
     banner_lines: list[str] | None = None
     banner_image_path: str | None = None
     include_footer: bool = True
+    page_numbers: bool = True
 
 class ConfigModel(BaseModel):
     author: str | None = None
@@ -121,6 +123,7 @@ def convert_file(body: ConvertRequest):
             banner_image_path=body.banner_image_path or config['banner_image_path'] or None,
             author=body.author or config['author'],
             include_footer=body.include_footer,
+            page_numbers=body.page_numbers,
         )
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -153,6 +156,7 @@ def convert_folder(body: ConvertFolderRequest):
                 banner_image_path=body.banner_image_path or config['banner_image_path'] or None,
                 author=body.author or config['author'],
                 include_footer=body.include_footer,
+                page_numbers=body.page_numbers,
             )
             results.append({'file': md_file, 'pdf': pdf_path, 'status': 'ok'})
         except Exception as e:

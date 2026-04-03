@@ -13,6 +13,7 @@ export default function App() {
   const [theme, setTheme]       = useState('default')
   const [themes, setThemes]     = useState(['default'])
   const [footer, setFooter]     = useState(true)
+  const [pageNumbers, setPageNumbers] = useState(true)
   const [pdfUrl, setPdfUrl]     = useState(null)
   const [pdfPath, setPdfPath]   = useState(null)
   const [loading, setLoading]   = useState(false)
@@ -54,7 +55,7 @@ export default function App() {
       if (isFolder) {
         setLoadingMsg('Converting folder...')
         const res = await convertFolder({
-          folder_path: path.trim(), theme, author, include_footer: footer,
+          folder_path: path.trim(), theme, author, include_footer: footer, page_numbers: pageNumbers,
         })
         setResults(res.results)
         if (res.failed === 0) {
@@ -67,7 +68,7 @@ export default function App() {
       } else {
         setLoadingMsg('Converting...')
         const res = await convertFile({
-          file_path: path.trim(), theme, author, include_footer: footer,
+          file_path: path.trim(), theme, author, include_footer: footer, page_numbers: pageNumbers,
         })
         setPdfUrl(previewUrl(res.pdf_path))
         setPdfPath(res.pdf_path)
@@ -112,6 +113,8 @@ export default function App() {
           onAuthorChange={setAuthor}
           footer={footer}
           onFooterChange={setFooter}
+          pageNumbers={pageNumbers}
+          onPageNumbersChange={setPageNumbers}
           onSave={handleSaveConfig}
         />
 
